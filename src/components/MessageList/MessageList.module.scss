@@ -12,10 +12,10 @@
   }
 }
 .content {
-  max-width: 920px;
+  max-width: v.$chat-content-width + 2 * v.$chat-content-gutter;
   min-height: 100%;
   margin: 0 auto;
-  padding: 28px 32px;
+  padding: 28px v.$chat-content-gutter;
   display: flex;
   flex-direction: column;
 }

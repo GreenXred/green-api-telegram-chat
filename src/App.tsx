@@ -19,9 +19,7 @@ import {
 import styles from './App.module.scss';
 
 function App() {
-  const [credentials, setCredentials] = useState<GreenApiCredentials | null>(
-    null,
-  );
+  const [credentials, setCredentials] = useState<GreenApiCredentials | null>(null);
   const [restoring, setRestoring] = useState(true);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,6 +28,7 @@ function App() {
   const historyRequest = useRef<AbortController | null>(null);
   const sendRequest = useRef<AbortController | null>(null);
   const selectedChatId = useRef<string | null>(null);
+
   const api = useMemo(
     () => (credentials ? createGreenApiClient(credentials) : null),
     [credentials],
@@ -37,6 +36,7 @@ function App() {
 
   const handleIncomingMessage = useCallback((incoming: IncomingMessage) => {
     if (incoming.chatId !== selectedChatId.current) return;
+
     setMessages((previous) =>
       previous.some((message) => message.id === incoming.message.id)
         ? previous
@@ -117,25 +117,22 @@ function App() {
     setHistoryLoading(true);
 
     try {
-      const history = await api.getChatHistory(
-        chat.chatId,
-        50,
-        controller.signal,
-      );
+      const history = await api.getChatHistory(chat.chatId, 50, controller.signal);
       if (controller.signal.aborted) return;
+
       // Notifications received during the history request must not be overwritten.
       const historyMessages = mapHistoryMessages(history);
       setMessages((previous) => {
-        const combined = new Map(
-          historyMessages.map((message) => [message.id, message]),
-        );
+        const combined = new Map(historyMessages.map((message) => [message.id, message]));
         for (const message of previous) combined.set(message.id, message);
+
         return [...combined.values()].sort(
           (first, second) => first.timestamp - second.timestamp,
         );
       });
     } catch {
       if (controller.signal.aborted) return;
+
       setHistoryError('Не удалось загрузить историю сообщений');
     } finally {
       if (historyRequest.current === controller) {
@@ -158,6 +155,7 @@ function App() {
 
     const controller = new AbortController();
     sendRequest.current = controller;
+
     try {
       const { idMessage } = await api.sendMessage(
         currentChat.chatId,
@@ -165,12 +163,14 @@ function App() {
         controller.signal,
       );
       controller.signal.throwIfAborted();
+
       const message: Message = {
         id: idMessage,
         text: text.trim(),
         direction: 'outgoing',
         timestamp: Math.floor(Date.now() / 1000),
       };
+
       setMessages((previous) =>
         previous.some((item) => item.id === idMessage)
           ? previous
@@ -232,11 +232,7 @@ function App() {
 
   return (
     <main className={styles.app}>
-      <ChatHeader
-        chat={currentChat}
-        onNewChat={handleNewChat}
-        onLogout={handleLogout}
-      />
+      <ChatHeader chat={currentChat} onNewChat={handleNewChat} onLogout={handleLogout} />
       {pollingError && (
         <p className={styles.polling} role="status">
           {pollingError}
@@ -262,13 +258,8 @@ function App() {
               ↗
             </div>
             <h2 id="new-chat-title">Новый чат</h2>
-            <p className={styles.intro}>
-              Введите номер телефона, чтобы начать чат
-            </p>
-            <ChatSearch
-              credentials={credentials}
-              onChatFound={handleChatFound}
-            />
+            <p className={styles.intro}>Введите номер телефона, чтобы начать чат</p>
+            <ChatSearch credentials={credentials} onChatFound={handleChatFound} />
             <p className={styles.hint}>
               Введите номер телефона пользователя Telegram,
               <br />

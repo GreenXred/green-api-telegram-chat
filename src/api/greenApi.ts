@@ -7,6 +7,7 @@ import type {
   ReceiveNotificationResponse,
   DeleteNotificationResponse,
 } from './greenApi.types';
+import { isAbortError } from '../utils/isAbortError';
 import { isValidPhone } from '../utils/phone';
 
 export class GreenApiError extends Error {
@@ -54,8 +55,7 @@ function isCheckAccountResponse(value: unknown): value is CheckAccountResponse {
   );
 }
 
-const RATE_LIMIT_MESSAGE =
-  'Превышен лимит запросов. Подождите и попробуйте позже.';
+const RATE_LIMIT_MESSAGE = 'Превышен лимит запросов. Подождите и попробуйте позже.';
 
 function checkBusinessError(
   value: unknown,
@@ -77,9 +77,7 @@ function checkBusinessError(
         'Instance запускается или не авторизован в Telegram. Проверьте его состояние в GREEN-API и повторите попытку.',
       );
     case 'Messenger is temporarily unavailable':
-      throw new GreenApiError(
-        'Telegram временно недоступен. Повторите попытку позже.',
-      );
+      throw new GreenApiError('Telegram временно недоступен. Повторите попытку позже.');
     default:
       // Never display an arbitrary API reason: it can contain sensitive data.
       throw new GreenApiError(fallbackMessage);
@@ -87,10 +85,7 @@ function checkBusinessError(
 }
 
 export function createGreenApiClient(credentials: GreenApiCredentials) {
-  const baseUrl = import.meta.env.VITE_GREEN_API_BASE_URL?.trim().replace(
-    /\/+$/,
-    '',
-  );
+  const baseUrl = import.meta.env.VITE_GREEN_API_BASE_URL?.trim().replace(/\/+$/, '');
 
   if (!baseUrl) {
     throw new GreenApiError('VITE_GREEN_API_BASE_URL is not configured');
@@ -109,9 +104,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
       throw new Error();
     }
   } catch {
-    throw new GreenApiError(
-      'VITE_GREEN_API_BASE_URL must be a valid HTTP(S) base URL',
-    );
+    throw new GreenApiError('VITE_GREEN_API_BASE_URL must be a valid HTTP(S) base URL');
   }
 
   const idInstance = credentials.idInstance.trim();
@@ -141,7 +134,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         cache: 'no-store',
       });
     } catch (error) {
-      if (options.signal?.aborted) throw error;
+      if (options.signal?.aborted || isAbortError(error)) throw error;
       throw new GreenApiError(
         'Не удалось связаться с GREEN-API. Проверьте сеть, base URL и доступность API (в том числе CORS).',
       );
@@ -163,10 +156,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         response.status === 401 || response.status === 403
           ? 'Доступ к GREEN-API отклонён. Проверьте credentials и доступ к instance.'
           : 'Ошибка запроса к GREEN-API.';
-      throw new GreenApiError(
-        `${message} HTTP ${response.status}.`,
-        response.status,
-      );
+      throw new GreenApiError(`${message} HTTP ${response.status}.`, response.status);
     }
 
     try {
@@ -175,7 +165,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
       const data: unknown = JSON.parse(text);
       return data;
     } catch (error) {
-      if (options.signal?.aborted) throw error;
+      if (options.signal?.aborted || isAbortError(error)) throw error;
       throw new GreenApiError('GREEN-API вернул некорректный JSON.');
     }
   }
@@ -184,9 +174,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
     async getSettings(signal?: AbortSignal): Promise<GetSettingsResponse> {
       const settings = await request('getSettings', { method: 'GET', signal });
       if (!isGetSettingsResponse(settings)) {
-        throw new GreenApiError(
-          'GREEN-API вернул неожиданный формат настроек.',
-        );
+        throw new GreenApiError('GREEN-API вернул неожиданный формат настроек.');
       }
 
       return settings;
@@ -197,9 +185,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
     ): Promise<CheckAccountResponse> {
       const phone = String(phoneNumber);
       if (!isValidPhone(phone)) {
-        throw new GreenApiError(
-          'Номер телефона должен содержать от 7 до 15 цифр.',
-        );
+        throw new GreenApiError('Номер телефона должен содержать от 7 до 15 цифр.');
       }
 
       const account = await request('checkAccount', {
@@ -237,9 +223,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         body: JSON.stringify({ chatId, count }),
       });
       if (!Array.isArray(history)) {
-        throw new GreenApiError(
-          'GREEN-API вернул неожиданный формат истории сообщений.',
-        );
+        throw new GreenApiError('GREEN-API вернул неожиданный формат истории сообщений.');
       }
       return history;
     },
@@ -292,19 +276,14 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         { suffix: `?receiveTimeout=${receiveTimeout}`, allowEmpty: true },
       );
       if (notification === null) return null;
-      checkBusinessError(
-        notification,
-        'Не удалось получить уведомление GREEN-API.',
-      );
+      checkBusinessError(notification, 'Не удалось получить уведомление GREEN-API.');
       if (
         !isRecord(notification) ||
         typeof notification.receiptId !== 'number' ||
         !Number.isSafeInteger(notification.receiptId) ||
         notification.receiptId < 1
       ) {
-        throw new GreenApiError(
-          'GREEN-API вернул некорректный receiptId уведомления.',
-        );
+        throw new GreenApiError('GREEN-API вернул некорректный receiptId уведомления.');
       }
       return { receiptId: notification.receiptId, body: notification.body };
     },
@@ -322,9 +301,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
       );
       checkBusinessError(result, 'Не удалось удалить уведомление GREEN-API.');
       if (!isRecord(result) || result.result !== true) {
-        throw new GreenApiError(
-          'GREEN-API не подтвердил удаление уведомления.',
-        );
+        throw new GreenApiError('GREEN-API не подтвердил удаление уведомления.');
       }
       return { result: true };
     },
@@ -333,9 +310,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
 
 export type GreenApiClient = ReturnType<typeof createGreenApiClient>;
 
-export function validateTelegramSettings(
-  settings: GetSettingsResponse,
-): string[] {
+export function validateTelegramSettings(settings: GetSettingsResponse): string[] {
   if (settings.typeInstance !== 'telegram') {
     throw new GreenApiError(
       'GREEN-API доступен, но instance не Telegram. Используйте Telegram instance.',

@@ -12,7 +12,6 @@ interface ChatSearchProps {
 }
 
 function ChatSearch({ credentials, onChatFound }: ChatSearchProps) {
-
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +20,6 @@ function ChatSearch({ credentials, onChatFound }: ChatSearchProps) {
   useEffect(() => () => activeRequest.current?.abort(), []);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-
     event.preventDefault();
 
     if (activeRequest.current) return;
@@ -61,21 +59,15 @@ function ChatSearch({ credentials, onChatFound }: ChatSearchProps) {
           ? error.message
           : 'Не удалось проверить номер. Попробуйте ещё раз.',
       );
-
     } finally {
-
       if (!controller.signal.aborted) setLoading(false);
       if (activeRequest.current === controller) activeRequest.current = null;
     }
   }
 
   return (
-    <form
-      className={styles.form}
-      onSubmit={handleSubmit}
-      noValidate
-      aria-busy={loading}
-    >
+
+    <form className={styles.form} onSubmit={handleSubmit} noValidate aria-busy={loading}>
       <div className={styles.field}>
         <label htmlFor="chat-phone">Номер телефона</label>
         <input
@@ -96,11 +88,13 @@ function ChatSearch({ credentials, onChatFound }: ChatSearchProps) {
           }}
         />
       </div>
+
       {error && (
         <p className={styles.error} id="chat-search-error" role="alert">
           {error}
         </p>
       )}
+      
       <button className={styles.submit} type="submit" disabled={loading}>
         {loading ? 'Поиск...' : 'Открыть чат'}
       </button>

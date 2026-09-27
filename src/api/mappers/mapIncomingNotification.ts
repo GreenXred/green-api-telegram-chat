@@ -11,8 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isIncomingText(value: unknown): value is IncomingTextNotificationBody {
-  if (!isRecord(value) || value.typeWebhook !== 'incomingMessageReceived')
-    return false;
+  if (!isRecord(value) || value.typeWebhook !== 'incomingMessageReceived') return false;
   const sender = value.senderData;
   const data = value.messageData;
   return (

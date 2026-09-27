@@ -1,7 +1,4 @@
-import type {
-  GetChatHistoryResponse,
-  GreenApiHistoryMessage,
-} from '../greenApi.types';
+import type { GetChatHistoryResponse, GreenApiHistoryMessage } from '../greenApi.types';
 import type { Message } from '../../types/chat';
 
 type TextHistoryMessage = GreenApiHistoryMessage & {
@@ -33,9 +30,7 @@ function isTextHistoryMessage(value: unknown): value is TextHistoryMessage {
   );
 }
 
-export function mapHistoryMessages(
-  history: Readonly<GetChatHistoryResponse>,
-): Message[] {
+export function mapHistoryMessages(history: Readonly<GetChatHistoryResponse>): Message[] {
   return history
     .filter(isTextHistoryMessage)
     .map((message): Message => ({

@@ -5,7 +5,7 @@
   grid-template-columns: minmax(0, 1fr) 48px;
   align-items: end;
   gap: 10px;
-  padding: 16px max(24px, calc((100% - 856px) / 2));
+  padding: 16px max(v.$chat-content-gutter, calc((100% - #{v.$chat-content-width}) / 2));
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   background: v.$surface;
   border-top: 1px solid v.$border;

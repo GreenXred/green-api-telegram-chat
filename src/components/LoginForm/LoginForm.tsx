@@ -5,10 +5,7 @@ import type { GreenApiCredentials } from '../../api/greenApi.types';
 import styles from './LoginForm.module.scss';
 
 interface LoginFormProps {
-  onLogin: (
-    credentials: GreenApiCredentials,
-    signal: AbortSignal,
-  ) => Promise<void>;
+  onLogin: (credentials: GreenApiCredentials, signal: AbortSignal) => Promise<void>;
 }
 
 function LoginForm({ onLogin }: LoginFormProps) {
@@ -21,10 +18,10 @@ function LoginForm({ onLogin }: LoginFormProps) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+
     if (activeRequest.current) return;
 
     const data = new FormData(event.currentTarget);
-
     const credentials = {
       idInstance: String(data.get('idInstance') ?? '').trim(),
       apiTokenInstance: String(data.get('apiTokenInstance') ?? '').trim(),
@@ -46,6 +43,7 @@ function LoginForm({ onLogin }: LoginFormProps) {
       await onLogin(credentials, controller.signal);
     } catch (error) {
       if (controller.signal.aborted) return;
+
       setError(
         error instanceof GreenApiError
           ? error.message
@@ -58,6 +56,7 @@ function LoginForm({ onLogin }: LoginFormProps) {
   }
 
   return (
+
     <form
       className={styles.form}
       onSubmit={handleSubmit}
@@ -99,6 +98,7 @@ function LoginForm({ onLogin }: LoginFormProps) {
             aria-describedby={error ? 'login-error' : undefined}
             onChange={() => setError(null)}
           />
+
           <button
             className={styles.visibility}
             type="button"
@@ -122,9 +122,9 @@ function LoginForm({ onLogin }: LoginFormProps) {
       <button className={styles.submit} type="submit" disabled={loading}>
         {loading ? 'Подключение...' : 'Войти'}
       </button>
+      
       <p className={styles.note}>
-        Используйте данные вашего Telegram instance из личного кабинета
-        GREEN-API
+        Используйте данные вашего Telegram instance из личного кабинета GREEN-API
       </p>
     </form>
   );

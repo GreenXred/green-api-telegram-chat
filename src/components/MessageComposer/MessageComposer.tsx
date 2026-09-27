@@ -15,6 +15,7 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
   const submitting = useRef(false);
   const mounted = useRef(false);
   const restoreFocus = useRef(false);
+
   const busy = disabled || sending;
 
   useEffect(() => {
@@ -40,6 +41,7 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const message = text.trim();
     if (busy || submitting.current || !message) return;
 
@@ -50,9 +52,11 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
     try {
       await onSend(message);
       if (!mounted.current) return;
+
       setText('');
     } catch {
       if (!mounted.current) return;
+
       setError('Не удалось отправить сообщение');
     } finally {
       submitting.current = false;
@@ -64,17 +68,14 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing
-    ) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       if (!event.repeat) event.currentTarget.form?.requestSubmit();
     }
   }
 
   return (
+
     <form
       className={styles.composer}
       onSubmit={handleSubmit}
@@ -94,11 +95,13 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
+
       {error && (
         <p className={styles.error} id="message-send-error" role="alert">
           {error}
         </p>
       )}
+
       <button
         type="submit"
         aria-label={sending ? 'Отправка...' : 'Отправить'}
@@ -107,13 +110,7 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
         {sending ? (
           <span className={styles.spinner} aria-hidden="true" />
         ) : (
-          <svg
-            aria-hidden="true"
-            width="23"
-            height="23"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
+          <svg aria-hidden="true" width="23" height="23" viewBox="0 0 24 24" fill="none">
             <path
               d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"
               stroke="currentColor"
