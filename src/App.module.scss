@@ -1,0 +1,39 @@
+@use './styles/variables' as variables;
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.fields {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid variables.$border;
+
+  input,
+  button {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.result {
+  overflow-wrap: anywhere;
+
+  dd {
+    margin: 0 0 12px;
+  }
+
+  dt {
+    font-weight: 600;
+  }
+}
