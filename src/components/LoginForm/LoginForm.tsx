@@ -5,7 +5,6 @@ import type { GreenApiCredentials } from '../../api/greenApi.types';
 import styles from './LoginForm.module.scss';
 
 interface LoginFormProps {
-
   onLogin: (
     credentials: GreenApiCredentials,
     signal: AbortSignal,
@@ -13,7 +12,6 @@ interface LoginFormProps {
 }
 
 function LoginForm({ onLogin }: LoginFormProps) {
-
   const [showToken, setShowToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +20,6 @@ function LoginForm({ onLogin }: LoginFormProps) {
   useEffect(() => () => activeRequest.current?.abort(), []);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-
     event.preventDefault();
     if (activeRequest.current) return;
 
@@ -47,7 +44,6 @@ function LoginForm({ onLogin }: LoginFormProps) {
 
     try {
       await onLogin(credentials, controller.signal);
-
     } catch (error) {
       if (controller.signal.aborted) return;
       setError(
@@ -55,16 +51,13 @@ function LoginForm({ onLogin }: LoginFormProps) {
           ? error.message
           : 'Не удалось войти. Попробуйте ещё раз.',
       );
-
     } finally {
-
       if (!controller.signal.aborted) setLoading(false);
       if (activeRequest.current === controller) activeRequest.current = null;
     }
   }
 
   return (
-
     <form
       className={styles.form}
       onSubmit={handleSubmit}
@@ -72,9 +65,7 @@ function LoginForm({ onLogin }: LoginFormProps) {
       autoComplete="off"
       aria-busy={loading}
     >
-      <p className={styles.subtitle}>
-        Подключите свой Telegram через GREEN-API
-      </p>
+      <p className={styles.subtitle}>Подключитесь через GREEN-API</p>
 
       <div className={styles.field}>
         <label htmlFor="idInstance">idInstance</label>
@@ -131,7 +122,10 @@ function LoginForm({ onLogin }: LoginFormProps) {
       <button className={styles.submit} type="submit" disabled={loading}>
         {loading ? 'Подключение...' : 'Войти'}
       </button>
-      <p className={styles.note}>Сессия сохраняется только в этой вкладке.</p>
+      <p className={styles.note}>
+        Используйте данные вашего Telegram instance из личного кабинета
+        GREEN-API
+      </p>
     </form>
   );
 }

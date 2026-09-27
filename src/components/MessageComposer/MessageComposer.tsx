@@ -31,6 +31,13 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
     }
   }, [busy]);
 
+  useEffect(() => {
+    if (textarea.current) {
+      textarea.current.style.height = 'auto';
+      textarea.current.style.height = `${Math.min(textarea.current.scrollHeight + 2, 144)}px`;
+    }
+  }, [text]);
+
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = text.trim();
@@ -79,7 +86,7 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
         ref={textarea}
         id="message-text"
         name="message"
-        rows={2}
+        rows={1}
         placeholder="Написать сообщение..."
         value={text}
         disabled={busy}
@@ -92,8 +99,29 @@ function MessageComposer({ onSend, disabled = false }: MessageComposerProps) {
           {error}
         </p>
       )}
-      <button type="submit" disabled={busy || !text.trim()}>
-        {sending ? 'Отправка...' : 'Отправить'}
+      <button
+        type="submit"
+        aria-label={sending ? 'Отправка...' : 'Отправить'}
+        disabled={busy || !text.trim()}
+      >
+        {sending ? (
+          <span className={styles.spinner} aria-hidden="true" />
+        ) : (
+          <svg
+            aria-hidden="true"
+            width="23"
+            height="23"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
       </button>
     </form>
   );

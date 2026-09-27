@@ -1,72 +1,53 @@
 import { useEffect, useRef } from 'react';
 import type { Message } from '../../types/chat';
+import MessageBubble from '../MessageBubble/MessageBubble';
 import styles from './MessageList.module.scss';
-
 interface MessageListProps {
   messages: readonly Message[];
   loading: boolean;
   error: string | null;
 }
-
-const timeFormatter = new Intl.DateTimeFormat(undefined, {
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
 function MessageList({ messages, loading, error }: MessageListProps) {
-  const list = useRef<HTMLOListElement | null>(null);
-
+  const viewport = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+    if (viewport.current)
+      viewport.current.scrollTop = viewport.current.scrollHeight;
   }, [messages, loading]);
-
   return (
     <section
+      ref={viewport}
       className={styles.history}
-      aria-label="История сообщений"
+      aria-label="Сообщения чата"
       aria-busy={loading}
+      tabIndex={0}
     >
-      <h2>История сообщений</h2>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-      {loading ? (
-        <p className={styles.state} role="status">
-          Загружаем историю сообщений...
-        </p>
-      ) : messages.length === 0 ? (
-        !error && (
-          <p className={styles.state} role="status">
-            Сообщений пока нет
+      <div className={styles.content}>
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
           </p>
-        )
-      ) : (
-        <ol
-          ref={list}
-          className={styles.list}
-          aria-label="Сообщения"
-          tabIndex={0}
-        >
-          {messages.map((message) => (
-            <li className={styles.message} key={message.id}>
-              <div className={styles.meta}>
-                {message.direction === 'incoming' ? 'Входящее' : 'Исходящее'}
-                {' · '}
-                <time
-                  dateTime={new Date(message.timestamp * 1000).toISOString()}
-                >
-                  {timeFormatter.format(new Date(message.timestamp * 1000))}
-                </time>
-              </div>
-              <p className={styles.text}>{message.text}</p>
-            </li>
-          ))}
-        </ol>
-      )}
+        )}
+        {loading ? (
+          <p className={styles.state} role="status">
+            Загрузка сообщений...
+          </p>
+        ) : messages.length === 0 ? (
+          !error && (
+            <p className={styles.state} role="status">
+              Сообщений пока нет.
+              <br />
+              Напишите первое сообщение.
+            </p>
+          )
+        ) : (
+          <ol className={styles.list} aria-label="Сообщения">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+          </ol>
+        )}
+      </div>
     </section>
   );
 }
-
 export default MessageList;

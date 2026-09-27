@@ -34,6 +34,6 @@ export function clearCredentials(): void {
   try {
     sessionStorage.removeItem(STORAGE_KEY);
   } catch {
-    // A browser blocking storage must not prevent returning to the login screen.
+    // Блокировка хранилища данных в браузере не должна препятствовать возвращению на экран входа в систему.
   }
 }

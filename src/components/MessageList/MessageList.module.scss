@@ -1,51 +1,49 @@
-@use '../../styles/variables' as variables;
-
+@use '../../styles/variables' as v;
 .history {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-
-.state,
-.meta {
-  color: variables.$text-secondary;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.state {
-  text-align: center;
-}
-
-.error {
-  color: #9f2525;
-  line-height: 1.5;
-}
-
-.list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-height: min(45vh, 400px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-
+  overscroll-behavior: contain;
+  background: v.$chat-background;
+  scrollbar-color: v.$border transparent;
   &:focus-visible {
-    outline: 3px solid variables.$primary-blue;
-    outline-offset: 3px;
+    outline: 2px solid v.$primary-blue;
+    outline-offset: -2px;
   }
 }
-
-.message {
-  padding: 12px 0;
-  border-top: 1px solid variables.$border;
+.content {
+  max-width: 920px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
 }
-
-.meta {
-  margin-bottom: 4px;
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: auto 0 0;
+  padding: 0;
 }
-
-.text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
+.state {
+  margin: auto;
+  text-align: center;
+  padding: 20px;
+  color: v.$text-secondary;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.error {
+  background: v.$danger-background;
+  color: v.$danger;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .content {
+    padding: 20px 12px;
+  }
 }

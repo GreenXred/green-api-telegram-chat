@@ -1,124 +1,106 @@
-@use './styles/variables' as variables;
-
-.page {
+@use './styles/variables' as v;
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  min-height: 100vh;
-  min-height: 100svh;
   padding: 24px 16px;
+  background: v.$background;
 }
-
 .card {
   width: 100%;
   max-width: 440px;
-  padding: clamp(24px, 5vw, 40px);
-  border: 1px solid variables.$border;
-  border-radius: 20px;
-  background: variables.$surface;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 5%);
+  padding: 36px;
+  background: v.$surface;
+  border: 1px solid v.$border;
+  border-radius: 24px;
+  box-shadow: v.$shadow;
 }
-
 .mark {
   display: grid;
   place-items: center;
   width: 68px;
   height: 68px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-  background: variables.$primary-blue;
-  color: variables.$surface;
+  border-radius: 22px;
+  margin: 0 auto 24px;
+  background: v.$primary-blue;
+  color: v.$surface;
+  font-size: 38px;
 }
-
 .title {
   margin: 0;
   text-align: center;
   font-size: 28px;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.7px;
 }
-
 .description {
-  color: variables.$text-secondary;
-  line-height: 1.5;
+  color: v.$text-secondary;
   text-align: center;
+  line-height: 1.6;
 }
-
-.connected {
+.app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 1280px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: v.$surface;
+  box-shadow: v.$shadow;
+}
+.polling {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 16px;
+  text-align: center;
+  background: v.$background;
+  color: v.$text-secondary;
+  font-size: 12px;
+}
+.newChat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
-  gap: 16px;
-  margin-top: 24px;
-
+  place-items: center;
+  padding: 32px 24px;
+  background: v.$background;
+}
+.searchCard {
+  width: 100%;
+  max-width: 540px;
   h2 {
-    margin: 0;
-    font-size: 18px;
+    margin: 0 0 12px;
     text-align: center;
+    font-size: 28px;
+    letter-spacing: -0.6px;
   }
-
-  p {
-    margin: 0;
+}
+.intro {
+  margin: 0 auto 32px;
+  max-width: 360px;
+  text-align: center;
+  color: v.$text-secondary;
+  line-height: 1.6;
+  font-size: 15px;
+}
+.hint {
+  color: v.$text-secondary;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 22px 0 0;
+}
+@media (max-width: 600px) {
+  .card {
+    padding: 28px 24px;
+  }
+  .newChat {
+    padding: 24px 20px;
   }
 }
 
-.diagnostics {
-  padding: 12px;
-  border: 1px solid variables.$border;
-  border-radius: 10px;
-  background: variables.$background;
-  font-size: 14px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-
-  ul {
-    margin: 8px 0 0;
-    padding-left: 20px;
-  }
-
-  li + li {
-    margin-top: 8px;
-  }
-}
-
-.logout {
-  min-height: 48px;
-  border: 1px solid variables.$border;
-  border-radius: 10px;
-  background: variables.$surface;
-  color: variables.$text-primary;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:hover {
-    background: variables.$background;
-  }
-
-  &:focus-visible {
-    outline: 3px solid variables.$primary-blue;
-    outline-offset: 3px;
-  }
-}
-
-.currentChat {
-  padding: 16px;
-  border: 1px solid variables.$border;
-  border-left: 3px solid variables.$primary-blue;
-  border-radius: 10px;
-  background: variables.$background;
-  overflow-wrap: anywhere;
-
-  dl {
-    margin: 16px 0 0;
-    font-size: 14px;
-  }
-
-  dt {
-    color: variables.$text-secondary;
-  }
-
-  dd {
-    margin: 2px 0 12px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
+:global(body):has(.app) {
+  overflow: hidden;
 }
