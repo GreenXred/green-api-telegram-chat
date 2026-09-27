@@ -26,6 +26,13 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: min(45vh, 400px);
+  overflow-y: auto;
+
+  &:focus-visible {
+    outline: 3px solid variables.$primary-blue;
+    outline-offset: 3px;
+  }
 }
 
 .message {

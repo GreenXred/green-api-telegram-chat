@@ -3,6 +3,7 @@ import type {
   GetChatHistoryResponse,
   GetSettingsResponse,
   GreenApiCredentials,
+  SendMessageResponse,
 } from './greenApi.types';
 import { isValidPhone } from '../utils/phone';
 
@@ -52,9 +53,12 @@ function isCheckAccountResponse(value: unknown): value is CheckAccountResponse {
 }
 
 const RATE_LIMIT_MESSAGE =
-  'Превышен лимит проверок номера. Подождите и попробуйте позже.';
+  'Превышен лимит запросов. Подождите и попробуйте позже.';
 
-function checkBusinessError(value: unknown): void {
+function checkBusinessError(
+  value: unknown,
+  fallbackMessage = 'GREEN-API не смог проверить номер. Проверьте состояние instance и повторите поиск позже.',
+): void {
   if (!isRecord(value) || value.status !== false) return;
 
   const reason =
@@ -68,17 +72,15 @@ function checkBusinessError(value: unknown): void {
       throw new GreenApiError(RATE_LIMIT_MESSAGE);
     case 'instance is starting or not authorized':
       throw new GreenApiError(
-        'Instance запускается или не авторизован в Telegram. Проверьте его состояние в GREEN-API и повторите поиск.',
+        'Instance запускается или не авторизован в Telegram. Проверьте его состояние в GREEN-API и повторите попытку.',
       );
     case 'Messenger is temporarily unavailable':
       throw new GreenApiError(
-        'Telegram временно недоступен. Повторите поиск позже.',
+        'Telegram временно недоступен. Повторите попытку позже.',
       );
     default:
       // Never display an arbitrary API reason: it can contain sensitive data.
-      throw new GreenApiError(
-        'GREEN-API не смог проверить номер. Проверьте состояние instance и повторите поиск позже.',
-      );
+      throw new GreenApiError(fallbackMessage);
   }
 }
 
@@ -118,7 +120,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
   }
 
   async function request(
-    method: 'getSettings' | 'checkAccount' | 'getChatHistory',
+    method: 'getSettings' | 'checkAccount' | 'getChatHistory' | 'sendMessage',
     options: RequestInit,
   ): Promise<unknown> {
     const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/${method}/${encodeURIComponent(apiTokenInstance)}`;
@@ -228,6 +230,36 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         );
       }
       return history;
+    },
+    async sendMessage(
+      chatId: string,
+      message: string,
+      signal?: AbortSignal,
+    ): Promise<SendMessageResponse> {
+      if (!chatId.trim() || !message.trim()) {
+        throw new GreenApiError('Укажите chatId и непустой текст сообщения.');
+      }
+
+      const result = await request('sendMessage', {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId, message: message.trim() }),
+      });
+      checkBusinessError(
+        result,
+        'GREEN-API не смог отправить сообщение. Попробуйте позже.',
+      );
+      if (
+        !isRecord(result) ||
+        typeof result.idMessage !== 'string' ||
+        !result.idMessage.trim()
+      ) {
+        throw new GreenApiError(
+          'GREEN-API вернул неожиданный формат ответа отправки сообщения.',
+        );
+      }
+      return { idMessage: result.idMessage };
     },
   };
 }

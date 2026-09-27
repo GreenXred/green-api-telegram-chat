@@ -30,3 +30,7 @@ export interface GreenApiHistoryMessage {
 
 // The transport checks the array; the mapper validates each untrusted entry.
 export type GetChatHistoryResponse = unknown[];
+
+export interface SendMessageResponse {
+  idMessage: string;
+}

@@ -5,6 +5,7 @@ import { validateCredentials } from './api/validateCredentials';
 import LoginForm from './components/LoginForm/LoginForm';
 import ChatSearch from './components/ChatSearch/ChatSearch';
 import MessageList from './components/MessageList/MessageList';
+import MessageComposer from './components/MessageComposer/MessageComposer';
 import { mapHistoryMessages } from './api/mappers/mapHistoryMessages';
 import type { Chat, Message } from './types/chat';
 import {
@@ -25,8 +26,15 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
+  const sendRequest = useRef<AbortController | null>(null);
 
-  useEffect(() => () => historyRequest.current?.abort(), []);
+  useEffect(
+    () => () => {
+      historyRequest.current?.abort();
+      sendRequest.current?.abort();
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,6 +86,8 @@ function App() {
   async function handleChatFound(chat: Chat): Promise<void> {
     if (!credentials) return;
 
+    sendRequest.current?.abort();
+    sendRequest.current = null;
     historyRequest.current?.abort();
     const controller = new AbortController();
     historyRequest.current = controller;
@@ -105,7 +115,45 @@ function App() {
     }
   }
 
+  async function handleSendMessage(text: string): Promise<void> {
+    if (
+      !credentials ||
+      !currentChat ||
+      historyRequest.current ||
+      sendRequest.current ||
+      !text.trim()
+    ) {
+      throw new Error('Не удалось отправить сообщение');
+    }
+
+    const controller = new AbortController();
+    sendRequest.current = controller;
+    try {
+      const { idMessage } = await createGreenApiClient(credentials).sendMessage(
+        currentChat.chatId,
+        text.trim(),
+        controller.signal,
+      );
+      controller.signal.throwIfAborted();
+      const message: Message = {
+        id: idMessage,
+        text: text.trim(),
+        direction: 'outgoing',
+        timestamp: Math.floor(Date.now() / 1000),
+      };
+      setMessages((previous) =>
+        previous.some((item) => item.id === idMessage)
+          ? previous
+          : [...previous, message],
+      );
+    } finally {
+      if (sendRequest.current === controller) sendRequest.current = null;
+    }
+  }
+
   function handleLogout() {
+    sendRequest.current?.abort();
+    sendRequest.current = null;
     historyRequest.current?.abort();
     historyRequest.current = null;
     clearCredentials();
@@ -170,6 +218,13 @@ function App() {
                 messages={messages}
                 loading={historyLoading}
                 error={historyError}
+              />
+            )}
+            {currentChat && (
+              <MessageComposer
+                key={currentChat.chatId}
+                onSend={handleSendMessage}
+                disabled={historyLoading}
               />
             )}
             {warnings.length > 0 && (

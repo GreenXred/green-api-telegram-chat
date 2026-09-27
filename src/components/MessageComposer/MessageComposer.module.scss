@@ -1,0 +1,64 @@
+@use 'sass:color';
+@use '../../styles/variables' as variables;
+
+.composer {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+
+  label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 12px;
+    resize: vertical;
+    border: 1px solid variables.$border;
+    border-radius: 10px;
+    background: variables.$surface;
+    color: variables.$text-primary;
+    line-height: 1.5;
+
+    &::placeholder {
+      color: variables.$text-secondary;
+    }
+  }
+
+  button {
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: color.adjust(variables.$primary-blue, $lightness: -12%);
+    color: variables.$surface;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: color.adjust(variables.$primary-blue, $lightness: -18%);
+    }
+  }
+
+  textarea,
+  button {
+    &:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: 3px solid variables.$primary-blue;
+      outline-offset: 3px;
+    }
+  }
+}
+
+.error {
+  color: #9f2525;
+  font-size: 14px;
+  line-height: 1.5;
+}

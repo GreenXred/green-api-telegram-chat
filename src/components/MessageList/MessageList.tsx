@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { Message } from '../../types/chat';
 import styles from './MessageList.module.scss';
 
@@ -13,6 +14,12 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 function MessageList({ messages, loading, error }: MessageListProps) {
+  const list = useRef<HTMLOListElement | null>(null);
+
+  useEffect(() => {
+    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+  }, [messages, loading]);
+
   return (
     <section
       className={styles.history}
@@ -20,20 +27,28 @@ function MessageList({ messages, loading, error }: MessageListProps) {
       aria-busy={loading}
     >
       <h2>История сообщений</h2>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
       {loading ? (
         <p className={styles.state} role="status">
           Загружаем историю сообщений...
         </p>
-      ) : error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
       ) : messages.length === 0 ? (
-        <p className={styles.state} role="status">
-          Сообщений пока нет
-        </p>
+        !error && (
+          <p className={styles.state} role="status">
+            Сообщений пока нет
+          </p>
+        )
       ) : (
-        <ol className={styles.list} aria-label="Сообщения">
+        <ol
+          ref={list}
+          className={styles.list}
+          aria-label="Сообщения"
+          tabIndex={0}
+        >
           {messages.map((message) => (
             <li className={styles.message} key={message.id}>
               <div className={styles.meta}>
