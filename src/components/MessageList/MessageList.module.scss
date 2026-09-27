@@ -1,0 +1,44 @@
+@use '../../styles/variables' as variables;
+
+.history {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.state,
+.meta {
+  color: variables.$text-secondary;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.state {
+  text-align: center;
+}
+
+.error {
+  color: #9f2525;
+  line-height: 1.5;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message {
+  padding: 12px 0;
+  border-top: 1px solid variables.$border;
+}
+
+.meta {
+  margin-bottom: 4px;
+}
+
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}

@@ -1,5 +1,6 @@
 import type {
   CheckAccountResponse,
+  GetChatHistoryResponse,
   GetSettingsResponse,
   GreenApiCredentials,
 } from './greenApi.types';
@@ -117,7 +118,7 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
   }
 
   async function request(
-    method: 'getSettings' | 'checkAccount',
+    method: 'getSettings' | 'checkAccount' | 'getChatHistory',
     options: RequestInit,
   ): Promise<unknown> {
     const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/${method}/${encodeURIComponent(apiTokenInstance)}`;
@@ -200,6 +201,33 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
         );
       }
       return account;
+    },
+    async getChatHistory(
+      chatId: string,
+      count = 50,
+      signal?: AbortSignal,
+    ): Promise<GetChatHistoryResponse> {
+      if (!chatId.trim()) {
+        throw new GreenApiError('Укажите chatId для загрузки истории.');
+      }
+      if (!Number.isSafeInteger(count) || count < 1) {
+        throw new GreenApiError(
+          'Количество сообщений должно быть положительным целым числом.',
+        );
+      }
+
+      const history = await request('getChatHistory', {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId, count }),
+      });
+      if (!Array.isArray(history)) {
+        throw new GreenApiError(
+          'GREEN-API вернул неожиданный формат истории сообщений.',
+        );
+      }
+      return history;
     },
   };
 }

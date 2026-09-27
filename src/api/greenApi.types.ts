@@ -18,3 +18,15 @@ export interface CheckAccountResponse {
   phoneNumber?: number;
   fromCache?: boolean;
 }
+
+export interface GreenApiHistoryMessage {
+  type: 'incoming' | 'outgoing';
+  idMessage: string;
+  timestamp: number;
+  typeMessage: string;
+  textMessage?: string;
+  [key: string]: unknown;
+}
+
+// The transport checks the array; the mapper validates each untrusted entry.
+export type GetChatHistoryResponse = unknown[];

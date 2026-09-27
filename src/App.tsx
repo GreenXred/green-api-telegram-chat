@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { GreenApiError } from './api/greenApi';
+import { useEffect, useRef, useState } from 'react';
+import { createGreenApiClient, GreenApiError } from './api/greenApi';
 import type { GreenApiCredentials } from './api/greenApi.types';
 import { validateCredentials } from './api/validateCredentials';
 import LoginForm from './components/LoginForm/LoginForm';
 import ChatSearch from './components/ChatSearch/ChatSearch';
-import type { Chat } from './types/chat';
+import MessageList from './components/MessageList/MessageList';
+import { mapHistoryMessages } from './api/mappers/mapHistoryMessages';
+import type { Chat, Message } from './types/chat';
 import {
   clearCredentials,
   readCredentials,
@@ -19,6 +21,12 @@ function App() {
   const [restoring, setRestoring] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const historyRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => historyRequest.current?.abort(), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,11 +75,46 @@ function App() {
     setCredentials(candidate);
   }
 
+  async function handleChatFound(chat: Chat): Promise<void> {
+    if (!credentials) return;
+
+    historyRequest.current?.abort();
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    setCurrentChat(chat);
+    setMessages([]);
+    setHistoryError(null);
+    setHistoryLoading(true);
+
+    try {
+      const history = await createGreenApiClient(credentials).getChatHistory(
+        chat.chatId,
+        50,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      setMessages(mapHistoryMessages(history));
+    } catch {
+      if (controller.signal.aborted) return;
+      setHistoryError('Не удалось загрузить историю сообщений');
+    } finally {
+      if (historyRequest.current === controller) {
+        historyRequest.current = null;
+        if (!controller.signal.aborted) setHistoryLoading(false);
+      }
+    }
+  }
+
   function handleLogout() {
+    historyRequest.current?.abort();
+    historyRequest.current = null;
     clearCredentials();
     setCredentials(null);
     setWarnings([]);
     setCurrentChat(null);
+    setMessages([]);
+    setHistoryLoading(false);
+    setHistoryError(null);
   }
 
   return (
@@ -103,7 +146,7 @@ function App() {
             <h2 role="status">GREEN-API подключен</h2>
             <ChatSearch
               credentials={credentials}
-              onChatFound={setCurrentChat}
+              onChatFound={handleChatFound}
             />
             {currentChat && (
               <section className={styles.currentChat} aria-label="Текущий чат">
@@ -121,6 +164,13 @@ function App() {
                   )}
                 </dl>
               </section>
+            )}
+            {currentChat && (
+              <MessageList
+                messages={messages}
+                loading={historyLoading}
+                error={historyError}
+              />
             )}
             {warnings.length > 0 && (
               <aside
