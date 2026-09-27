@@ -3,6 +3,8 @@ import { GreenApiError } from './api/greenApi';
 import type { GreenApiCredentials } from './api/greenApi.types';
 import { validateCredentials } from './api/validateCredentials';
 import LoginForm from './components/LoginForm/LoginForm';
+import ChatSearch from './components/ChatSearch/ChatSearch';
+import type { Chat } from './types/chat';
 import {
   clearCredentials,
   readCredentials,
@@ -16,6 +18,7 @@ function App() {
   );
   const [restoring, setRestoring] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,6 +71,7 @@ function App() {
     clearCredentials();
     setCredentials(null);
     setWarnings([]);
+    setCurrentChat(null);
   }
 
   return (
@@ -97,9 +101,27 @@ function App() {
         ) : (
           <div className={styles.connected}>
             <h2 role="status">GREEN-API подключен</h2>
-            <p className={styles.description}>
-              Telegram chat interface will be here
-            </p>
+            <ChatSearch
+              credentials={credentials}
+              onChatFound={setCurrentChat}
+            />
+            {currentChat && (
+              <section className={styles.currentChat} aria-label="Текущий чат">
+                <h2 role="status">Чат открыт</h2>
+                <dl>
+                  <dt>chatId</dt>
+                  <dd>{currentChat.chatId}</dd>
+                  <dt>phone</dt>
+                  <dd>{currentChat.phoneNumber}</dd>
+                  {currentChat.username && (
+                    <>
+                      <dt>username</dt>
+                      <dd>{currentChat.username}</dd>
+                    </>
+                  )}
+                </dl>
+              </section>
+            )}
             {warnings.length > 0 && (
               <aside
                 className={styles.diagnostics}

@@ -5,6 +5,7 @@ import type { GreenApiCredentials } from '../../api/greenApi.types';
 import styles from './LoginForm.module.scss';
 
 interface LoginFormProps {
+
   onLogin: (
     credentials: GreenApiCredentials,
     signal: AbortSignal,
@@ -12,6 +13,7 @@ interface LoginFormProps {
 }
 
 function LoginForm({ onLogin }: LoginFormProps) {
+
   const [showToken, setShowToken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,14 +22,17 @@ function LoginForm({ onLogin }: LoginFormProps) {
   useEffect(() => () => activeRequest.current?.abort(), []);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+
     event.preventDefault();
     if (activeRequest.current) return;
 
     const data = new FormData(event.currentTarget);
+
     const credentials = {
       idInstance: String(data.get('idInstance') ?? '').trim(),
       apiTokenInstance: String(data.get('apiTokenInstance') ?? '').trim(),
     };
+
     setShowToken(false);
 
     if (!credentials.idInstance || !credentials.apiTokenInstance) {
@@ -42,6 +47,7 @@ function LoginForm({ onLogin }: LoginFormProps) {
 
     try {
       await onLogin(credentials, controller.signal);
+
     } catch (error) {
       if (controller.signal.aborted) return;
       setError(
@@ -49,13 +55,16 @@ function LoginForm({ onLogin }: LoginFormProps) {
           ? error.message
           : 'Не удалось войти. Попробуйте ещё раз.',
       );
+
     } finally {
+
       if (!controller.signal.aborted) setLoading(false);
       if (activeRequest.current === controller) activeRequest.current = null;
     }
   }
 
   return (
+
     <form
       className={styles.form}
       onSubmit={handleSubmit}

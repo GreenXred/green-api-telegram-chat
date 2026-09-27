@@ -10,3 +10,11 @@ export interface GetSettingsResponse {
   incomingWebhook: 'yes' | 'no';
   [key: string]: unknown;
 }
+
+export interface CheckAccountResponse {
+  exist: boolean;
+  chatId: string;
+  username?: string;
+  phoneNumber?: number;
+  fromCache?: boolean;
+}

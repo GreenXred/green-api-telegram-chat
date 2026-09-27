@@ -96,3 +96,29 @@
     outline-offset: 3px;
   }
 }
+
+.currentChat {
+  padding: 16px;
+  border: 1px solid variables.$border;
+  border-left: 3px solid variables.$primary-blue;
+  border-radius: 10px;
+  background: variables.$background;
+  overflow-wrap: anywhere;
+
+  dl {
+    margin: 16px 0 0;
+    font-size: 14px;
+  }
+
+  dt {
+    color: variables.$text-secondary;
+  }
+
+  dd {
+    margin: 2px 0 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}

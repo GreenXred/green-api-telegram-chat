@@ -1,7 +1,9 @@
 import type {
+  CheckAccountResponse,
   GetSettingsResponse,
   GreenApiCredentials,
 } from './greenApi.types';
+import { isValidPhone } from '../utils/phone';
 
 export class GreenApiError extends Error {
   readonly status?: number;
@@ -26,6 +28,57 @@ function isGetSettingsResponse(value: unknown): value is GetSettingsResponse {
     'incomingWebhook' in value &&
     (value.incomingWebhook === 'yes' || value.incomingWebhook === 'no')
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCheckAccountResponse(value: unknown): value is CheckAccountResponse {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.exist === 'boolean' &&
+    typeof value.chatId === 'string' &&
+    (!value.exist || value.chatId.trim().length > 0) &&
+    (value.username === undefined || typeof value.username === 'string') &&
+    (value.phoneNumber === undefined ||
+      (typeof value.phoneNumber === 'number' &&
+        Number.isSafeInteger(value.phoneNumber) &&
+        value.phoneNumber > 0)) &&
+    (value.fromCache === undefined || typeof value.fromCache === 'boolean')
+  );
+}
+
+const RATE_LIMIT_MESSAGE =
+  'Превышен лимит проверок номера. Подождите и попробуйте позже.';
+
+function checkBusinessError(value: unknown): void {
+  if (!isRecord(value) || value.status !== false) return;
+
+  const reason =
+    isRecord(value.data) && typeof value.data.reason === 'string'
+      ? value.data.reason
+      : value.reason;
+
+  switch (reason) {
+    case 'rate_limit_exceeded':
+    case 'Rate limited by messenger':
+      throw new GreenApiError(RATE_LIMIT_MESSAGE);
+    case 'instance is starting or not authorized':
+      throw new GreenApiError(
+        'Instance запускается или не авторизован в Telegram. Проверьте его состояние в GREEN-API и повторите поиск.',
+      );
+    case 'Messenger is temporarily unavailable':
+      throw new GreenApiError(
+        'Telegram временно недоступен. Повторите поиск позже.',
+      );
+    default:
+      // Never display an arbitrary API reason: it can contain sensitive data.
+      throw new GreenApiError(
+        'GREEN-API не смог проверить номер. Проверьте состояние instance и повторите поиск позже.',
+      );
+  }
 }
 
 export function createGreenApiClient(credentials: GreenApiCredentials) {
@@ -63,45 +116,58 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
     throw new GreenApiError('Укажите idInstance и apiTokenInstance.');
   }
 
-  return {
-    async getSettings(signal?: AbortSignal): Promise<GetSettingsResponse> {
-      const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/getSettings/${encodeURIComponent(apiTokenInstance)}`;
-      let response: Response;
+  async function request(
+    method: 'getSettings' | 'checkAccount',
+    options: RequestInit,
+  ): Promise<unknown> {
+    const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/${method}/${encodeURIComponent(apiTokenInstance)}`;
+    let response: Response;
 
-      try {
-        response = await fetch(url, {
-          method: 'GET',
-          signal,
-          cache: 'no-store',
-        });
-      } catch (error) {
-        if (signal?.aborted) throw error;
-        throw new GreenApiError(
-          'Не удалось связаться с GREEN-API. Проверьте сеть, base URL и доступность API (в том числе CORS).',
-        );
+    try {
+      response = await fetch(url, {
+        ...options,
+        cache: 'no-store',
+      });
+    } catch (error) {
+      if (options.signal?.aborted) throw error;
+      throw new GreenApiError(
+        'Не удалось связаться с GREEN-API. Проверьте сеть, base URL и доступность API (в том числе CORS).',
+      );
+    }
+
+    // Do not surface response bodies or statusText: they may echo credentials.
+    // Checking status first also handles HTML/plain-text error responses.
+    if (!response.ok) {
+      if (response.status === 429 || response.status === 469) {
+        throw new GreenApiError(RATE_LIMIT_MESSAGE, response.status);
       }
-
-      // Do not surface response bodies or statusText: they may echo credentials.
-      // Checking status first also handles HTML/plain-text error responses.
-      if (!response.ok) {
-        const message =
-          response.status === 401 || response.status === 403
-            ? 'Доступ к GREEN-API отклонён. Проверьте credentials и доступ к instance.'
-            : 'Ошибка запроса к GREEN-API.';
+      if (response.status === 466) {
         throw new GreenApiError(
-          `${message} HTTP ${response.status}.`,
+          'Исчерпан лимит тарифа GREEN-API. Проверьте доступную квоту в личном кабинете.',
           response.status,
         );
       }
+      const message =
+        response.status === 401 || response.status === 403
+          ? 'Доступ к GREEN-API отклонён. Проверьте credentials и доступ к instance.'
+          : 'Ошибка запроса к GREEN-API.';
+      throw new GreenApiError(
+        `${message} HTTP ${response.status}.`,
+        response.status,
+      );
+    }
 
-      let settings: unknown;
-      try {
-        settings = await response.json();
-      } catch (error) {
-        if (signal?.aborted) throw error;
-        throw new GreenApiError('GREEN-API вернул некорректный JSON.');
-      }
+    try {
+      return await response.json();
+    } catch (error) {
+      if (options.signal?.aborted) throw error;
+      throw new GreenApiError('GREEN-API вернул некорректный JSON.');
+    }
+  }
 
+  return {
+    async getSettings(signal?: AbortSignal): Promise<GetSettingsResponse> {
+      const settings = await request('getSettings', { method: 'GET', signal });
       if (!isGetSettingsResponse(settings)) {
         throw new GreenApiError(
           'GREEN-API вернул неожиданный формат настроек.',
@@ -109,6 +175,31 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
       }
 
       return settings;
+    },
+    async checkAccount(
+      phoneNumber: string | number,
+      signal?: AbortSignal,
+    ): Promise<CheckAccountResponse> {
+      const phone = String(phoneNumber);
+      if (!isValidPhone(phone)) {
+        throw new GreenApiError(
+          'Номер телефона должен содержать от 7 до 15 цифр.',
+        );
+      }
+
+      const account = await request('checkAccount', {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: Number(phone) }),
+      });
+      checkBusinessError(account);
+      if (!isCheckAccountResponse(account)) {
+        throw new GreenApiError(
+          'GREEN-API вернул неожиданный формат ответа проверки номера.',
+        );
+      }
+      return account;
     },
   };
 }
