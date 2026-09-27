@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createGreenApiClient, GreenApiError } from './api/greenApi';
 import type { GreenApiCredentials } from './api/greenApi.types';
 import { validateCredentials } from './api/validateCredentials';
@@ -7,6 +7,8 @@ import ChatSearch from './components/ChatSearch/ChatSearch';
 import MessageList from './components/MessageList/MessageList';
 import MessageComposer from './components/MessageComposer/MessageComposer';
 import { mapHistoryMessages } from './api/mappers/mapHistoryMessages';
+import type { IncomingMessage } from './api/mappers/mapIncomingNotification';
+import { useNotifications } from './hooks/useNotifications';
 import type { Chat, Message } from './types/chat';
 import {
   clearCredentials,
@@ -27,6 +29,28 @@ function App() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
   const sendRequest = useRef<AbortController | null>(null);
+  const selectedChatId = useRef<string | null>(null);
+  const api = useMemo(
+    () => (credentials ? createGreenApiClient(credentials) : null),
+    [credentials],
+  );
+
+  const handleIncomingMessage = useCallback((incoming: IncomingMessage) => {
+    if (incoming.chatId !== selectedChatId.current) return;
+    setMessages((previous) =>
+      previous.some((message) => message.id === incoming.message.id)
+        ? previous
+        : [...previous, incoming.message].sort(
+            (first, second) => first.timestamp - second.timestamp,
+          ),
+    );
+  }, []);
+
+  const { error: pollingError, stop: stopNotifications } = useNotifications({
+    api,
+    enabled: credentials !== null,
+    onIncomingMessage: handleIncomingMessage,
+  });
 
   useEffect(
     () => () => {
@@ -84,26 +108,37 @@ function App() {
   }
 
   async function handleChatFound(chat: Chat): Promise<void> {
-    if (!credentials) return;
+    if (!api) return;
 
     sendRequest.current?.abort();
     sendRequest.current = null;
     historyRequest.current?.abort();
     const controller = new AbortController();
     historyRequest.current = controller;
+    selectedChatId.current = chat.chatId;
     setCurrentChat(chat);
     setMessages([]);
     setHistoryError(null);
     setHistoryLoading(true);
 
     try {
-      const history = await createGreenApiClient(credentials).getChatHistory(
+      const history = await api.getChatHistory(
         chat.chatId,
         50,
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      setMessages(mapHistoryMessages(history));
+      // Notifications received during the history request must not be overwritten.
+      const historyMessages = mapHistoryMessages(history);
+      setMessages((previous) => {
+        const combined = new Map(
+          historyMessages.map((message) => [message.id, message]),
+        );
+        for (const message of previous) combined.set(message.id, message);
+        return [...combined.values()].sort(
+          (first, second) => first.timestamp - second.timestamp,
+        );
+      });
     } catch {
       if (controller.signal.aborted) return;
       setHistoryError('Не удалось загрузить историю сообщений');
@@ -117,7 +152,7 @@ function App() {
 
   async function handleSendMessage(text: string): Promise<void> {
     if (
-      !credentials ||
+      !api ||
       !currentChat ||
       historyRequest.current ||
       sendRequest.current ||
@@ -129,7 +164,7 @@ function App() {
     const controller = new AbortController();
     sendRequest.current = controller;
     try {
-      const { idMessage } = await createGreenApiClient(credentials).sendMessage(
+      const { idMessage } = await api.sendMessage(
         currentChat.chatId,
         text.trim(),
         controller.signal,
@@ -152,6 +187,8 @@ function App() {
   }
 
   function handleLogout() {
+    stopNotifications();
+    selectedChatId.current = null;
     sendRequest.current?.abort();
     sendRequest.current = null;
     historyRequest.current?.abort();
@@ -192,6 +229,11 @@ function App() {
         ) : (
           <div className={styles.connected}>
             <h2 role="status">GREEN-API подключен</h2>
+            {pollingError && (
+              <p className={styles.description} role="status">
+                {pollingError}
+              </p>
+            )}
             <ChatSearch
               credentials={credentials}
               onChatFound={handleChatFound}

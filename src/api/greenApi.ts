@@ -4,6 +4,8 @@ import type {
   GetSettingsResponse,
   GreenApiCredentials,
   SendMessageResponse,
+  ReceiveNotificationResponse,
+  DeleteNotificationResponse,
 } from './greenApi.types';
 import { isValidPhone } from '../utils/phone';
 
@@ -120,10 +122,17 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
   }
 
   async function request(
-    method: 'getSettings' | 'checkAccount' | 'getChatHistory' | 'sendMessage',
+    method:
+      | 'getSettings'
+      | 'checkAccount'
+      | 'getChatHistory'
+      | 'sendMessage'
+      | 'receiveNotification'
+      | 'deleteNotification',
     options: RequestInit,
+    parameters: { suffix?: string; allowEmpty?: boolean } = {},
   ): Promise<unknown> {
-    const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/${method}/${encodeURIComponent(apiTokenInstance)}`;
+    const url = `${baseUrl}/waInstance${encodeURIComponent(idInstance)}/${method}/${encodeURIComponent(apiTokenInstance)}${parameters.suffix ?? ''}`;
     let response: Response;
 
     try {
@@ -161,7 +170,10 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
     }
 
     try {
-      return await response.json();
+      const text = await response.text();
+      if (parameters.allowEmpty && !text.trim()) return null;
+      const data: unknown = JSON.parse(text);
+      return data;
     } catch (error) {
       if (options.signal?.aborted) throw error;
       throw new GreenApiError('GREEN-API вернул некорректный JSON.');
@@ -261,8 +273,65 @@ export function createGreenApiClient(credentials: GreenApiCredentials) {
       }
       return { idMessage: result.idMessage };
     },
+    async receiveNotification(
+      receiveTimeout = 20,
+      signal?: AbortSignal,
+    ): Promise<ReceiveNotificationResponse | null> {
+      if (
+        !Number.isInteger(receiveTimeout) ||
+        receiveTimeout < 5 ||
+        receiveTimeout > 60
+      ) {
+        throw new GreenApiError(
+          'Таймаут получения уведомления должен быть от 5 до 60 секунд.',
+        );
+      }
+      const notification = await request(
+        'receiveNotification',
+        { method: 'GET', signal },
+        { suffix: `?receiveTimeout=${receiveTimeout}`, allowEmpty: true },
+      );
+      if (notification === null) return null;
+      checkBusinessError(
+        notification,
+        'Не удалось получить уведомление GREEN-API.',
+      );
+      if (
+        !isRecord(notification) ||
+        typeof notification.receiptId !== 'number' ||
+        !Number.isSafeInteger(notification.receiptId) ||
+        notification.receiptId < 1
+      ) {
+        throw new GreenApiError(
+          'GREEN-API вернул некорректный receiptId уведомления.',
+        );
+      }
+      return { receiptId: notification.receiptId, body: notification.body };
+    },
+    async deleteNotification(
+      receiptId: number,
+      signal?: AbortSignal,
+    ): Promise<DeleteNotificationResponse> {
+      if (!Number.isSafeInteger(receiptId) || receiptId < 1) {
+        throw new GreenApiError('Укажите корректный receiptId уведомления.');
+      }
+      const result = await request(
+        'deleteNotification',
+        { method: 'DELETE', signal },
+        { suffix: `/${receiptId}` },
+      );
+      checkBusinessError(result, 'Не удалось удалить уведомление GREEN-API.');
+      if (!isRecord(result) || result.result !== true) {
+        throw new GreenApiError(
+          'GREEN-API не подтвердил удаление уведомления.',
+        );
+      }
+      return { result: true };
+    },
   };
 }
+
+export type GreenApiClient = ReturnType<typeof createGreenApiClient>;
 
 export function validateTelegramSettings(
   settings: GetSettingsResponse,

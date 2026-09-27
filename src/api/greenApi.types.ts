@@ -34,3 +34,24 @@ export type GetChatHistoryResponse = unknown[];
 export interface SendMessageResponse {
   idMessage: string;
 }
+
+export interface ReceiveNotificationResponse {
+  receiptId: number;
+  // Unknown bodies must still be acknowledged; the mapper validates their fields.
+  body: unknown;
+}
+
+export interface IncomingTextNotificationBody {
+  typeWebhook: 'incomingMessageReceived';
+  idMessage: string;
+  timestamp: number;
+  senderData: { chatId: string };
+  messageData: {
+    typeMessage: 'textMessage';
+    textMessageData: { textMessage: string };
+  };
+}
+
+export interface DeleteNotificationResponse {
+  result: boolean;
+}
