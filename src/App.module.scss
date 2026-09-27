@@ -1,39 +1,98 @@
 @use './styles/variables' as variables;
 
 .page {
-  max-width: 640px;
-  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100svh;
   padding: 24px 16px;
 }
 
-.fields {
+.card {
+  width: 100%;
+  max-width: 440px;
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid variables.$border;
+  border-radius: 20px;
+  background: variables.$surface;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 5%);
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: variables.$primary-blue;
+  color: variables.$surface;
+}
+
+.title {
+  margin: 0;
+  text-align: center;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.description {
+  color: variables.$text-secondary;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.connected {
   display: grid;
   gap: 16px;
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid variables.$border;
+  margin-top: 24px;
 
-  input,
-  button {
-    width: 100%;
-    min-width: 0;
-    padding: 8px;
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  p {
+    margin: 0;
   }
 }
 
-.field {
-  display: grid;
-  gap: 4px;
-}
-
-.result {
+.diagnostics {
+  padding: 12px;
+  border: 1px solid variables.$border;
+  border-radius: 10px;
+  background: variables.$background;
+  font-size: 14px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 
-  dd {
-    margin: 0 0 12px;
+  ul {
+    margin: 8px 0 0;
+    padding-left: 20px;
   }
 
-  dt {
-    font-weight: 600;
+  li + li {
+    margin-top: 8px;
+  }
+}
+
+.logout {
+  min-height: 48px;
+  border: 1px solid variables.$border;
+  border-radius: 10px;
+  background: variables.$surface;
+  color: variables.$text-primary;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: variables.$background;
+  }
+
+  &:focus-visible {
+    outline: 3px solid variables.$primary-blue;
+    outline-offset: 3px;
   }
 }

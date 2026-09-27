@@ -1,140 +1,128 @@
-import { useEffect, useRef, useState } from 'react';
-import type { SubmitEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { GreenApiError } from './api/greenApi';
+import type { GreenApiCredentials } from './api/greenApi.types';
+import { validateCredentials } from './api/validateCredentials';
+import LoginForm from './components/LoginForm/LoginForm';
 import {
-  createGreenApiClient,
-  GreenApiError,
-  validateTelegramSettings,
-} from './api/greenApi';
-import type { GetSettingsResponse } from './api/greenApi.types';
+  clearCredentials,
+  readCredentials,
+  saveCredentials,
+} from './utils/credentialsStorage';
 import styles from './App.module.scss';
 
-type ConnectionState =
-  | { status: 'idle' | 'loading' }
-  | { status: 'error'; message: string }
-  | {
-      status: 'success';
-      settings: Pick<
-        GetSettingsResponse,
-        'wid' | 'typeInstance' | 'incomingWebhook'
-      >;
-      webhookConfigured: boolean;
-      warnings: string[];
-    };
-
 function App() {
-  const [connection, setConnection] = useState<ConnectionState>({
-    status: 'idle',
-  });
-  const activeRequest = useRef<AbortController | null>(null);
+  const [credentials, setCredentials] = useState<GreenApiCredentials | null>(
+    null,
+  );
+  const [restoring, setRestoring] = useState(true);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
-  useEffect(() => () => activeRequest.current?.abort(), []);
-
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (activeRequest.current) return;
-
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const credentials = {
-      idInstance: String(data.get('idInstance') ?? ''),
-      apiTokenInstance: String(data.get('apiTokenInstance') ?? ''),
-    };
-    form.reset();
-
+  useEffect(() => {
     const controller = new AbortController();
-    activeRequest.current = controller;
-    setConnection({ status: 'loading' });
+
+    async function restoreSession() {
+      try {
+        const stored = readCredentials();
+        if (!stored) return;
+
+        const diagnostics = await validateCredentials(
+          stored,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+
+        setWarnings(diagnostics);
+        setCredentials(stored);
+      } catch {
+        // StrictMode cleanup/unmount must not delete an otherwise valid session.
+        if (!controller.signal.aborted) clearCredentials();
+      } finally {
+        if (!controller.signal.aborted) setRestoring(false);
+      }
+    }
+
+    void restoreSession();
+    return () => controller.abort();
+  }, []);
+
+  async function handleLogin(
+    candidate: GreenApiCredentials,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const diagnostics = await validateCredentials(candidate, signal);
+    if (signal.aborted) return;
 
     try {
-      const client = createGreenApiClient(credentials);
-      const settings = await client.getSettings(controller.signal);
-      const warnings = validateTelegramSettings(settings);
-      if (controller.signal.aborted) return;
-
-      setConnection({
-        status: 'success',
-        settings: {
-          wid: settings.wid,
-          typeInstance: settings.typeInstance,
-          incomingWebhook: settings.incomingWebhook,
-        },
-        webhookConfigured: settings.webhookUrl !== '',
-        warnings,
-      });
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setConnection({
-        status: 'error',
-        message:
-          error instanceof GreenApiError
-            ? error.message
-            : 'Не удалось проверить подключение к GREEN-API.',
-      });
-    } finally {
-      if (activeRequest.current === controller) activeRequest.current = null;
+      saveCredentials(candidate);
+    } catch {
+      throw new GreenApiError(
+        'Не удалось сохранить сессию. Разрешите хранение данных сайта в браузере и повторите вход.',
+      );
     }
+
+    setWarnings(diagnostics);
+    setCredentials(candidate);
   }
 
-  const loading = connection.status === 'loading';
+  function handleLogout() {
+    clearCredentials();
+    setCredentials(null);
+    setWarnings([]);
+  }
 
   return (
     <main className={styles.page}>
-      <h1>GREEN-API: проверка подключения</h1>
-      <form onSubmit={handleSubmit} autoComplete="off" aria-busy={loading}>
-        <fieldset className={styles.fields} disabled={loading}>
-          <legend>Данные Telegram instance</legend>
-          <label className={styles.field}>
-            idInstance
-            <input
-              name="idInstance"
-              type="text"
-              required
-              autoCapitalize="none"
-              spellCheck={false}
+      <section className={styles.card} aria-labelledby="app-title">
+        <div className={styles.mark} aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="36" height="36" fill="none">
+            <path
+              d="m5 15 22-9-5 21-7-7-5 3 1-7 12-7-9 9"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
-          </label>
-          <label className={styles.field}>
-            apiTokenInstance
-            <input
-              name="apiTokenInstance"
-              type="password"
-              required
-              autoComplete="off"
-            />
-          </label>
-          <button type="submit">Проверить подключение</button>
-        </fieldset>
-      </form>
+          </svg>
+        </div>
+        <h1 id="app-title" className={styles.title}>
+          Telegram Chat
+        </h1>
 
-      {loading && <p role="status">Проверяем подключение…</p>}
-      {connection.status === 'error' && (
-        <p role="alert">{connection.message}</p>
-      )}
-      {connection.status === 'success' && (
-        <section className={styles.result} aria-label="Результат проверки">
-          <p role="status">GREEN-API подключен</p>
-          <dl>
-            <dt>typeInstance</dt>
-            <dd>{connection.settings.typeInstance}</dd>
-            <dt>wid</dt>
-            <dd>{connection.settings.wid || '—'}</dd>
-            <dt>webhookUrl</dt>
-            <dd>{connection.webhookConfigured ? 'настроен' : 'пустой'}</dd>
-            <dt>incomingWebhook</dt>
-            <dd>{connection.settings.incomingWebhook}</dd>
-          </dl>
-          {connection.warnings.length > 0 && (
-            <div>
-              <p>Предупреждения о настройках HTTP API (подключение успешно):</p>
-              <ul>
-                {connection.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
+        {restoring ? (
+          <p className={styles.description} role="status">
+            Восстанавливаем сессию...
+          </p>
+        ) : credentials === null ? (
+          <LoginForm onLogin={handleLogin} />
+        ) : (
+          <div className={styles.connected}>
+            <h2 role="status">GREEN-API подключен</h2>
+            <p className={styles.description}>
+              Telegram chat interface will be here
+            </p>
+            {warnings.length > 0 && (
+              <aside
+                className={styles.diagnostics}
+                aria-label="Настройки HTTP API"
+              >
+                <p>Подключение успешно. Рекомендации по настройкам:</p>
+                <ul>
+                  {warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </aside>
+            )}
+            <button
+              className={styles.logout}
+              type="button"
+              onClick={handleLogout}
+            >
+              Выйти
+            </button>
+          </div>
+        )}
+      </section>
     </main>
   );
 }
