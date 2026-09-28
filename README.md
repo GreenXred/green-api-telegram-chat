@@ -1,75 +1,96 @@
-# React + TypeScript + Vite
+# Telegram Chat — GREEN-API
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Одностраничный Telegram-like клиент на React, который позволяет работать с Telegram через GREEN-API.
 
-Currently, two official plugins are available:
+## Возможности
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Авторизация по `idInstance` и `apiTokenInstance`.
+- Проверка Telegram-пользователя по номеру телефона и открытие чата.
+- Загрузка последних сообщений и отправка текстовых сообщений.
+- Получение входящих сообщений без перезагрузки через long polling (`ReceiveNotification`).
+- Удаление обработанных уведомлений через `DeleteNotification`.
+- Сохранение сессии в `sessionStorage`.
+- Адаптивный Telegram-like UI.
 
-## React Compiler
+## Стек
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+React, TypeScript, Vite, SCSS Modules, Fetch API, GREEN-API Telegram API, ESLint, Prettier.
 
-## Expanding the ESLint configuration
+## Как это работает
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+`React → GREEN-API → Telegram`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Пользователь вводит `idInstance` и `apiTokenInstance`.
+2. Приложение проверяет Telegram instance.
+3. Пользователь вводит номер телефона.
+4. `CheckAccount` возвращает `chatId`.
+5. `GetChatHistory` загружает историю.
+6. `SendMessage` отправляет сообщение.
+7. `ReceiveNotification` получает входящие сообщения.
+8. `DeleteNotification` удаляет обработанное уведомление.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Предварительная настройка GREEN-API
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Создайте Telegram instance в GREEN-API.
+2. Авторизуйте Telegram-аккаунт через QR-код.
+3. Получите `apiUrl`, `idInstance` и `apiTokenInstance` в личном кабинете.
+4. Для получения входящих сообщений через HTTP API оставьте `webhookUrl` пустым и установите `incomingWebhook` (уведомления о входящих сообщениях) в `yes`.
 
+Приложение не выполняет QR-авторизацию Telegram самостоятельно: instance должен быть авторизован заранее.
+
+## Установка
+
+```sh
+git clone <repository-url> green-api-telegram-chat
+cd green-api-telegram-chat
+npm install
+cp .env.example .env
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+В `.env` укажите свой `apiUrl` из GREEN-API вместо примера:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+VITE_GREEN_API_BASE_URL=https://YOUR_API_HOST.api.green-api.com
 ```
+
+`idInstance` и `apiTokenInstance` вводятся в интерфейсе приложения. Добавлять их в `.env` не нужно.
+
+Запустите приложение и откройте адрес, который Vite выведет в терминале:
+
+```sh
+npm run dev
+```
+
+## Архитектура
+
+```text
+src/
+  api/
+  components/
+  hooks/
+  styles/
+  types/
+  utils/
+```
+
+- `api` — GREEN-API client и mappers ответов API во внутренние модели.
+- `components` — компоненты UI.
+- `hooks` — управление long polling.
+- `styles` — глобальные стили и SCSS-переменные.
+- `types` — внутренние модели приложения.
+- `utils` — небольшие вспомогательные функции.
+
+## Ограничения
+
+- Поддерживаются только текстовые сообщения.
+- Нет списка всех Telegram-чатов: чат открывается по номеру телефона.
+- Нет поддержки файлов, изображений, голосовых сообщений и стикеров.
+- Приложение использует уже авторизованный GREEN-API Telegram instance.
+
+## Безопасность
+
+- Реальные credentials не хранятся в Git; `.env` исключён через `.gitignore`.
+- `apiTokenInstance` не логируется.
+- Credentials сохраняются только в `sessionStorage` на время браузерной сессии.
+
+Хранение API token во frontend не обеспечивает защиту секрета от доступа из браузера. Для production-системы секретные credentials обычно следует обрабатывать через backend.
